@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PsychEval — Panel del Centro</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --ink-soft: #3d3d5c;
+    --ink-muted: #8888aa;
+    --paper: #f8f6f1;
+    --paper-warm: #f0ece3;
+    --accent: #6b4f8e;
+    --accent-light: #9b7ec8;
+    --accent-pale: #ede7f6;
+    --teal: #2d7d82;
+    --teal-light: #4aa8ae;
+    --teal-pale: #e0f2f3;
+    --gold: #b5893a;
+    --gold-pale: #fdf4e3;
+    --success: #3a7d5c;
+    --success-pale: #e6f4ee;
+    --error: #8e3a3a;
+    --border: rgba(107, 79, 142, 0.12);
+    --shadow: 0 2px 16px rgba(26, 26, 46, 0.06);
+    --shadow-md: 0 4px 32px rgba(26, 26, 46, 0.08);
+    --sidebar-w: 240px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    padding: 0.5rem 1.5rem 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 1rem;
+  }
+
+  .sidebar-logo .logo-mark {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: white;
+  }
+
+  .sidebar-logo .logo-sub {
+    display: block;
+    font-size: 0.62rem;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 0.1rem;
+  }
+
+  .nav-section {
+    padding: 0 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .nav-section-label {
+    font-size: 0.62rem;
+    color: rgba(255,255,255,0.25);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.82rem;
+    text-decoration: none;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+  }
+
+  .nav-item:hover {
+    background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.8);
+  }
+
+  .nav-item.active {
+    background: rgba(107, 79, 142, 0.3);
+    color: white;
+  }
+
+  .nav-item .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: white;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 100px;
+    font-weight: 500;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .user-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .user-info { flex: 1; overflow: hidden; }
+
+  .user-name {
+    font-size: 0.78rem;
+    color: white;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .user-plan {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.35);
+    text-transform: capitalize;
+  }
+
+  .logout-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255,255,255,0.3);
+    font-size: 0.9rem;
+    padding: 4px;
+    transition: color 0.2s;
+  }
+
+  .logout-btn:hover { color: rgba(255,255,255,0.7); }
+
+  /* Main content */
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    min-height: 100vh;
+  }
+
+  /* Top bar */
+  .topbar {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .topbar-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .usage-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .usage-label {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  .usage-bar {
+    width: 120px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .usage-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    transition: width 0.5s ease;
+  }
+
+  .btn-new {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 10px rgba(107,79,142,0.3);
+    text-decoration: none;
+  }
+
+  .btn-new:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(107,79,142,0.4); }
+
+  /* Page content */
+  .page-content {
+    padding: 2rem;
+  }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--shadow);
+    transition: all 0.2s;
+  }
+
+  .stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1;
+    margin-bottom: 0.4rem;
+  }
+
+  .stat-sub {
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+  }
+
+  .stat-trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    padding: 2px 6px;
+    border-radius: 100px;
+  }
+
+  .stat-trend.up { background: var(--success-pale); color: var(--success); }
+  .stat-trend.neutral { background: var(--paper-warm); color: var(--ink-muted); }
+
+  /* Two column layout */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  /* Cards */
+  .card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .card-action {
+    font-size: 0.75rem;
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .card-action:hover { text-decoration: underline; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    padding: 0.75rem 1.5rem;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--paper);
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 0.9rem 1.5rem;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    border-bottom: 1px solid rgba(107,79,142,0.06);
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tr:hover td { background: rgba(107,79,142,0.02); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 3px 8px;
+    border-radius: 100px;
+    font-size: 0.68rem;
+    font-weight: 500;
+  }
+
+  .badge.completed { background: var(--success-pale); color: var(--success); }
+  .badge.processing { background: var(--gold-pale); color: var(--gold); }
+  .badge.pending { background: var(--paper-warm); color: var(--ink-muted); }
+
+  .table-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    font-size: 0.72rem;
+    cursor: pointer;
+    color: var(--ink-soft);
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .table-btn:hover { border-color: var(--accent-light); color: var(--accent); background: var(--accent-pale); }
+
+  /* Psychologists list */
+  .psych-list {
+    padding: 0.5rem 0;
+  }
+
+  .psych-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+
+  .psych-item:hover { background: var(--paper); }
+
+  .psych-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .psych-info { flex: 1; }
+
+  .psych-name {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .psych-role {
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+  }
+
+  .psych-count {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .psych-count-label {
+    font-size: 0.62rem;
+    color: var(--ink-muted);
+    text-align: right;
+  }
+
+  /* Add psychologist */
+  .add-psych-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.75rem 1.5rem;
+    color: var(--accent);
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: 'DM Sans', sans-serif;
+    width: 100%;
+    text-align: left;
+    border-top: 1px dashed var(--border);
+    transition: background 0.2s;
+  }
+
+  .add-psych-btn:hover { background: var(--accent-pale); }
+
+  /* Plan card */
+  .plan-card {
+    margin-bottom: 1.25rem;
+  }
+
+  .plan-info {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--accent-pale), white);
+  }
+
+  .plan-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+    text-transform: capitalize;
+  }
+
+  .plan-price {
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    margin-bottom: 1rem;
+  }
+
+  .plan-usage {
+    margin-bottom: 0.75rem;
+  }
+
+  .plan-usage-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.4rem;
+  }
+
+  .plan-bar {
+    height: 8px;
+    background: rgba(107,79,142,0.12);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .plan-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  }
+
+  .upgrade-btn {
+    display: block;
+    width: calc(100% - 3rem);
+    margin: 0 1.5rem 1.5rem;
+    padding: 0.65rem;
+    text-align: center;
+    background: white;
+    border: 1px solid var(--accent-light);
+    border-radius: 8px;
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .upgrade-btn:hover { background: var(--accent); color: white; }
+
+  /* Quick actions */
+  .quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .quick-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .quick-action:hover { border-color: var(--accent-light); background: var(--accent-pale); }
+
+  .quick-action .qa-icon { font-size: 1.4rem; }
+
+  .quick-action .qa-label {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    text-align: center;
+    font-weight: 500;
+  }
+
+  /* Recent activity */
+  .activity-list { padding: 0.5rem 0; }
+
+  .activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .activity-text {
+    flex: 1;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+  }
+
+  .activity-time {
+    font-size: 0.7rem;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,26,46,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 440px;
+    margin: 1rem;
+    box-shadow: 0 20px 60px rgba(26,26,46,0.2);
+    animation: modalIn 0.3s ease;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+  }
+
+  .modal p {
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .modal-field label {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .modal-field input, .modal-field select {
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .modal-field input:focus, .modal-field select:focus { border-color: var(--accent-light); }
+
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+
+  .btn-cancel {
+    flex: 1;
+    padding: 0.7rem;
+    background: var(--paper-warm);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: var(--ink-soft);
+    transition: all 0.2s;
+  }
+
+  .btn-cancel:hover { background: var(--paper); }
+
+  .btn-confirm {
+    flex: 1;
+    padding: 0.7rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    color: white;
+    transition: all 0.2s;
+  }
+
+  .btn-confirm:hover { opacity: 0.9; }
+
+  @media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .main { margin-left: 0; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-mark">PsychEval</span>
+    <span class="logo-sub">Panel del Centro</span>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Principal</div>
+    <button class="nav-item active" onclick="setPage('dashboard')">
+      <span class="nav-icon">📊</span> Resumen
+    </button>
+    <a class="nav-item" href="psych-eval.html">
+      <span class="nav-icon">✦</span> Nueva evaluación
+      <span class="nav-badge">IA</span>
+    </a>
+    <button class="nav-item" onclick="setPage('informes')">
+      <span class="nav-icon">📄</span> Mis informes
+    </button>
+  </div>
+
+  <div class="nav-section" style="margin-top: 0.5rem;">
+    <div class="nav-section-label">Gestión</div>
+    <button class="nav-item" onclick="openAddPsych()">
+      <span class="nav-icon">👥</span> Psicólogos
+    </button>
+    <button class="nav-item" onclick="setPage('facturacion')">
+      <span class="nav-icon">💳</span> Facturación
+    </button>
+    <button class="nav-item" onclick="setPage('ajustes')">
+      <span class="nav-icon">⚙️</span> Ajustes
+    </button>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-pill">
+      <div class="user-avatar" id="sidebarAvatar">C</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebarCenter">Centro</div>
+        <div class="user-plan" id="sidebarPlan">Plan Profesional</div>
+      </div>
+      <button class="logout-btn" onclick="doLogout()" title="Cerrar sesión">⏻</button>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">Resumen del Centro</div>
+    <div class="topbar-right">
+      <div class="usage-bar-wrap">
+        <span class="usage-label" id="usageLabel">12 / 60 informes</span>
+        <div class="usage-bar">
+          <div class="usage-fill" id="usageFill" style="width: 20%"></div>
+        </div>
+      </div>
+      <a class="btn-new" href="psych-eval.html">+ Nueva evaluación</a>
+    </div>
+  </div>
+
+  <!-- Page content -->
+  <div class="page-content">
+
+    <!-- Welcome banner -->
+    <div style="background: linear-gradient(135deg, var(--accent), var(--teal)); border-radius: 14px; padding: 1.5rem 2rem; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between; color: white;">
+      <div>
+        <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 300; margin-bottom: 0.25rem;">Bienvenido, <em id="welcomeName">Centro</em></div>
+        <div style="font-size: 0.8rem; opacity: 0.8;">Tienes <strong id="informesPendientes">3 evaluaciones</strong> en progreso este mes</div>
+      </div>
+      <div style="font-size: 3rem; opacity: 0.3;">✦</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">🎙️ Entrevistas</div>
+        <div class="stat-value" id="statEntrevistas">8</div>
+        <div class="stat-sub">
+          <span class="stat-trend up">↑ +3 este mes</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📄 Informes generados</div>
+        <div class="stat-value" id="statInformes">12</div>
+        <div class="stat-sub">
+          <span class="stat-trend up">↑ +5 este mes</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">👥 Psicólogos activos</div>
+        <div class="stat-value" id="statPsicologos">3</div>
+        <div class="stat-sub">
+          <span class="stat-trend neutral">Plan permite 5</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">⏱️ Tiempo ahorrado</div>
+        <div class="stat-value">6h</div>
+        <div class="stat-sub">
+          <span class="stat-trend up">vs redacción manual</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two column -->
+    <div class="two-col">
+
+      <!-- Left: recent evaluations -->
+      <div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Evaluaciones recientes</span>
+            <a class="card-action" href="#">Ver todas</a>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código paciente</th>
+                  <th>Psicólogo</th>
+                  <th>Tipo</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="evaluationsTable">
+                <tr>
+                  <td><strong>P-2025-012</strong></td>
+                  <td>Dra. García</td>
+                  <td>Clínico general</td>
+                  <td><span class="badge completed">✓ Completado</span></td>
+                  <td><button class="table-btn" onclick="openReport()">Ver informe</button></td>
+                </tr>
+                <tr>
+                  <td><strong>P-2025-011</strong></td>
+                  <td>Dr. Martínez</td>
+                  <td>Neuropsicológico</td>
+                  <td><span class="badge processing">⟳ En revisión</span></td>
+                  <td><button class="table-btn">Editar</button></td>
+                </tr>
+                <tr>
+                  <td><strong>P-2025-010</strong></td>
+                  <td>Dra. López</td>
+                  <td>Infantil/Juvenil</td>
+                  <td><span class="badge completed">✓ Completado</span></td>
+                  <td><button class="table-btn" onclick="openReport()">Ver informe</button></td>
+                </tr>
+                <tr>
+                  <td><strong>P-2025-009</strong></td>
+                  <td>Dra. García</td>
+                  <td>Pericial</td>
+                  <td><span class="badge pending">○ Pendiente</span></td>
+                  <td><button class="table-btn">Iniciar</button></td>
+                </tr>
+                <tr>
+                  <td><strong>P-2025-008</strong></td>
+                  <td>Dr. Martínez</td>
+                  <td>Clínico general</td>
+                  <td><span class="badge completed">✓ Completado</span></td>
+                  <td><button class="table-btn" onclick="openReport()">Ver informe</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Activity -->
+        <div class="card" style="margin-top: 1.25rem;">
+          <div class="card-header">
+            <span class="card-title">Actividad reciente</span>
+          </div>
+          <div class="activity-list">
+            <div class="activity-item">
+              <div class="activity-dot" style="background: var(--success)"></div>
+              <div class="activity-text">Informe <strong>P-2025-012</strong> completado y firmado por Dra. García</div>
+              <div class="activity-time">Hace 2h</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background: var(--accent)"></div>
+              <div class="activity-text">Nueva evaluación iniciada para <strong>P-2025-011</strong></div>
+              <div class="activity-time">Hace 4h</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background: var(--gold)"></div>
+              <div class="activity-text">Dr. Martínez añadido al equipo del centro</div>
+              <div class="activity-time">Ayer</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-dot" style="background: var(--teal)"></div>
+              <div class="activity-text">Renovación mensual procesada correctamente — Plan Profesional</div>
+              <div class="activity-time">Hace 3 días</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div>
+
+        <!-- Plan -->
+        <div class="card plan-card">
+          <div class="card-header">
+            <span class="card-title">Mi plan</span>
+            <a class="card-action" href="#" onclick="setPage('facturacion')">Gestionar</a>
+          </div>
+          <div class="plan-info">
+            <div class="plan-name" id="planName">Profesional</div>
+            <div class="plan-price" id="planPrice">99 €/mes · Próxima factura: 28 Feb 2025</div>
+            <div class="plan-usage">
+              <div class="plan-usage-label">
+                <span>Informes este mes</span>
+                <span id="planUsageText">12 / 60</span>
+              </div>
+              <div class="plan-bar">
+                <div class="plan-bar-fill" id="planBarFill" style="width: 20%"></div>
+              </div>
+            </div>
+          </div>
+          <button class="upgrade-btn" onclick="setPage('facturacion')">⬆️ Cambiar plan</button>
+        </div>
+
+        <!-- Psychologists -->
+        <div class="card" style="margin-bottom: 1.25rem;">
+          <div class="card-header">
+            <span class="card-title">Equipo</span>
+            <a class="card-action" href="#" onclick="openAddPsych()">+ Añadir</a>
+          </div>
+          <div class="psych-list" id="psychList">
+            <div class="psych-item">
+              <div class="psych-avatar" style="background: var(--accent)">AG</div>
+              <div class="psych-info">
+                <div class="psych-name">Dra. Ana García</div>
+                <div class="psych-role">Psicóloga General Sanitaria</div>
+              </div>
+              <div>
+                <div class="psych-count">7</div>
+                <div class="psych-count-label">informes</div>
+              </div>
+            </div>
+            <div class="psych-item">
+              <div class="psych-avatar" style="background: var(--teal)">JM</div>
+              <div class="psych-info">
+                <div class="psych-name">Dr. Juan Martínez</div>
+                <div class="psych-role">Neuropsicólogo</div>
+              </div>
+              <div>
+                <div class="psych-count">4</div>
+                <div class="psych-count-label">informes</div>
+              </div>
+            </div>
+            <div class="psych-item">
+              <div class="psych-avatar" style="background: var(--gold)">ML</div>
+              <div class="psych-info">
+                <div class="psych-name">Dra. María López</div>
+                <div class="psych-role">Psicóloga Infantil</div>
+              </div>
+              <div>
+                <div class="psych-count">1</div>
+                <div class="psych-count-label">informes</div>
+              </div>
+            </div>
+          </div>
+          <button class="add-psych-btn" onclick="openAddPsych()">
+            ＋ Añadir psicólogo al equipo
+          </button>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Acciones rápidas</span>
+          </div>
+          <div class="quick-actions">
+            <a class="quick-action" href="psych-eval.html">
+              <span class="qa-icon">✦</span>
+              <span class="qa-label">Nueva evaluación</span>
+            </a>
+            <a class="quick-action" href="#">
+              <span class="qa-icon">📥</span>
+              <span class="qa-label">Descargar informes</span>
+            </a>
+            <a class="quick-action" href="#" onclick="setPage('facturacion')">
+              <span class="qa-icon">🧾</span>
+              <span class="qa-label">Ver facturas</span>
+            </a>
+            <a class="quick-action" href="#" onclick="setPage('ajustes')">
+              <span class="qa-icon">⚙️</span>
+              <span class="qa-label">Ajustes centro</span>
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Add psychologist -->
+<div class="modal-overlay" id="addPsychModal">
+  <div class="modal">
+    <h3>Añadir psicólogo</h3>
+    <p>El psicólogo recibirá un email de invitación para acceder al centro.</p>
+    <div class="modal-field">
+      <label>Nombre completo</label>
+      <input type="text" id="newPsychName" placeholder="Dr./Dra. Nombre Apellidos">
+    </div>
+    <div class="modal-field">
+      <label>Email</label>
+      <input type="email" id="newPsychEmail" placeholder="psicologo@centro.com">
+    </div>
+    <div class="modal-field">
+      <label>Especialidad</label>
+      <select id="newPsychSpecialty">
+        <option>Psicología General Sanitaria</option>
+        <option>Neuropsicología</option>
+        <option>Psicología Infantil y Juvenil</option>
+        <option>Psicología Forense/Pericial</option>
+        <option>Psicología del Trabajo</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Nº de Colegiado</label>
+      <input type="text" id="newPsychNum" placeholder="M-12345">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('addPsychModal')">Cancelar</button>
+      <button class="btn-confirm" onclick="addPsychologist()">Enviar invitación</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── SUPABASE CONFIG ─────────────────────────────────────────────────────
+  const { createClient } = supabase;
+  const sb = createClient('https://qvuumuqixnwggfubwqsg.supabase.co', 'sb_publishable_M0sI7GiZKgd2xm-TRr3L6Q_8FxL8MEH');
+
+  let currentUser = null;
+  let currentCentro = null;
+
+  async function init() {
+    // Check session
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      window.location.href = 'login.html';
+      return;
+    }
+    currentUser = session.user;
+
+    // Load centro data
+    const { data: centro } = await sb.from('centros')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+
+    currentCentro = centro || {
+      nombre: currentUser.user_metadata?.center || 'Mi Centro',
+      plan: currentUser.user_metadata?.plan || 'basico',
+      informes_usados: 0
+    };
+
+    const centerName = currentCentro.nombre;
+    const plan = currentCentro.plan;
+    const limits = { basico: 20, profesional: 60, clinica: 999 };
+    const used = currentCentro.informes_usados || 0;
+    const limit = limits[plan] || 20;
+    const pct = Math.round((used / limit) * 100);
+
+    // Update UI
+    document.getElementById('sidebarCenter').textContent = centerName;
+    document.getElementById('sidebarPlan').textContent = 'Plan ' + capitalize(plan);
+    document.getElementById('sidebarAvatar').textContent = centerName.charAt(0).toUpperCase();
+    document.getElementById('welcomeName').textContent = centerName;
+    document.getElementById('usageLabel').textContent = `${used} / ${limit} informes`;
+    document.getElementById('usageFill').style.width = pct + '%';
+    document.getElementById('planUsageText').textContent = `${used} / ${limit}`;
+    document.getElementById('planBarFill').style.width = pct + '%';
+    document.getElementById('statInformes').textContent = used;
+
+    const prices = { basico: '49 €/mes', profesional: '99 €/mes', clinica: '199 €/mes' };
+    document.getElementById('planName').textContent = capitalize(plan);
+    document.getElementById('planPrice').textContent = (prices[plan] || '49 €/mes') + ' · Plan activo';
+
+    // Load evaluaciones
+    loadEvaluaciones();
+
+    // Load psicologos
+    loadPsicologos();
+  }
+
+  async function loadEvaluaciones() {
+    const { data: evals } = await sb.from('evaluaciones')
+      .select('*, psicologos(nombre)')
+      .eq('centro_id', currentUser.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (evals && evals.length > 0) {
+      const tbody = document.getElementById('evaluationsTable');
+      tbody.innerHTML = evals.map(e => `
+        <tr>
+          <td><strong>${e.codigo_paciente}</strong></td>
+          <td>${e.psicologos?.nombre || '—'}</td>
+          <td>${e.tipo_informe || '—'}</td>
+          <td><span class="badge ${e.estado === 'completado' ? 'completed' : e.estado === 'en_proceso' ? 'processing' : 'pending'}">${
+            e.estado === 'completado' ? '✓ Completado' : e.estado === 'en_proceso' ? '⟳ En proceso' : '○ Pendiente'
+          }</span></td>
+          <td><button class="table-btn" onclick="window.location.href='psych-eval.html'">Ver</button></td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  async function loadPsicologos() {
+    const { data: psicologos } = await sb.from('psicologos')
+      .select('*')
+      .eq('centro_id', currentUser.id)
+      .eq('activo', true);
+
+    if (psicologos && psicologos.length > 0) {
+      document.getElementById('statPsicologos').textContent = psicologos.length;
+      const list = document.getElementById('psychList');
+      const colors = ['var(--accent)', 'var(--teal)', 'var(--gold)', '#7d3a6b', '#3a5c7d'];
+      list.innerHTML = psicologos.map((p, i) => `
+        <div class="psych-item">
+          <div class="psych-avatar" style="background: ${colors[i % colors.length]}">${p.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
+          <div class="psych-info">
+            <div class="psych-name">${p.nombre}</div>
+            <div class="psych-role">${p.especialidad || 'Psicólogo/a'}</div>
+          </div>
+          <div>
+            <div class="psych-count">0</div>
+            <div class="psych-count-label">informes</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  function capitalize(str) {
+    return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+  }
+
+  function setPage(page) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const titles = {
+      dashboard: 'Resumen del Centro',
+      informes: 'Mis Informes',
+      facturacion: 'Facturación',
+      ajustes: 'Ajustes del Centro'
+    };
+    document.getElementById('topbarTitle').textContent = titles[page] || 'Panel';
+    alert(`Sección "${titles[page]}" — disponible en la versión completa con Supabase`);
+  }
+
+  function openAddPsych() {
+    document.getElementById('addPsychModal').classList.add('show');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+  }
+
+  async function addPsychologist() {
+    const name = document.getElementById('newPsychName').value.trim();
+    const email = document.getElementById('newPsychEmail').value.trim();
+    const spec = document.getElementById('newPsychSpecialty').value;
+    const num = document.getElementById('newPsychNum').value.trim();
+    if (!name || !email) { alert('Completa nombre y email'); return; }
+
+    // Save to Supabase
+    const { error } = await sb.from('psicologos').insert({
+      centro_id: currentUser.id,
+      nombre: name,
+      email: email,
+      especialidad: spec,
+      numero_colegiado: num
+    });
+
+    if (error) { alert('Error: ' + error.message); return; }
+
+    // Update UI
+    const initials = name.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+    const colors = ['var(--accent)', 'var(--teal)', 'var(--gold)', '#7d3a6b', '#3a5c7d'];
+    const color = colors[document.querySelectorAll('.psych-item').length % colors.length];
+
+    const item = document.createElement('div');
+    item.className = 'psych-item';
+    item.innerHTML = `
+      <div class="psych-avatar" style="background: ${color}">${initials}</div>
+      <div class="psych-info">
+        <div class="psych-name">${name}</div>
+        <div class="psych-role">${spec}</div>
+      </div>
+      <div>
+        <div class="psych-count">0</div>
+        <div class="psych-count-label">informes</div>
+      </div>
+    `;
+    document.getElementById('psychList').appendChild(item);
+    document.getElementById('statPsicologos').textContent =
+      parseInt(document.getElementById('statPsicologos').textContent) + 1;
+
+    closeModal('addPsychModal');
+    document.getElementById('newPsychName').value = '';
+    document.getElementById('newPsychEmail').value = '';
+    document.getElementById('newPsychNum').value = '';
+  }
+
+  function openReport() {
+    window.location.href = 'psych-eval.html';
+  }
+
+  async function doLogout() {
+    if (confirm('¿Cerrar sesión?')) {
+      await sb.auth.signOut();
+      window.location.href = 'login.html';
+    }
+  }
+
+  // Close modal on overlay click
+  document.getElementById('addPsychModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal('addPsychModal');
+  });
+
+  init();
+</script>
+</body>
+</html>
