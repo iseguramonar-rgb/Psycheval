@@ -694,7 +694,7 @@
   const sb = createClient('https://qvuumuqixnwggfubwqsg.supabase.co', 'sb_publishable_M0sI7GiZKgd2xm-TRr3L6Q_8FxL8MEH');
 
   // Check if already logged in
-  sb.auth.getSession().then({ data: { session } }) => {
+  sb.auth.getSession().then(({ data: { session } })) => {
     if (session) window.location.href = 'dashboard.html';
   });
 
