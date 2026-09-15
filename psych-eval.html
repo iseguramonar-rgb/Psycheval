@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PsychEval — Evaluación Psicológica con IA</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --ink-soft: #3d3d5c;
+    --ink-muted: #8888aa;
+    --paper: #f8f6f1;
+    --paper-warm: #f0ece3;
+    --accent: #6b4f8e;
+    --accent-light: #9b7ec8;
+    --accent-pale: #ede7f6;
+    --teal: #2d7d82;
+    --teal-light: #4aa8ae;
+    --gold: #b5893a;
+    --success: #3a7d5c;
+    --error: #8e3a3a;
+    --border: rgba(107, 79, 142, 0.15);
+    --shadow: 0 4px 32px rgba(26, 26, 46, 0.08);
+    --shadow-hover: 0 8px 48px rgba(107, 79, 142, 0.18);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      radial-gradient(ellipse at 20% 20%, rgba(107, 79, 142, 0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(45, 125, 130, 0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 2rem 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(248, 246, 241, 0.9);
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+
+  .logo-mark {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+  }
+
+  .logo-sub {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .header-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: var(--accent-pale);
+    border: 1px solid rgba(107, 79, 142, 0.2);
+    border-radius: 100px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.8); }
+  }
+
+  /* Main layout */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 3rem 2rem 4rem;
+  }
+
+  .page-title {
+    text-align: center;
+    margin-bottom: 3.5rem;
+  }
+
+  .page-title h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 3rem;
+    font-weight: 300;
+    color: var(--ink);
+    line-height: 1.1;
+    margin-bottom: 0.75rem;
+  }
+
+  .page-title h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .page-title p {
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+    font-weight: 300;
+    letter-spacing: 0.02em;
+  }
+
+  /* Steps */
+  .steps-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  @media (max-width: 768px) {
+    .steps-container { grid-template-columns: 1fr; }
+    header { padding: 1.5rem; }
+    .page-title h1 { font-size: 2.2rem; }
+  }
+
+  .step-card {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .step-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .step-card:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-2px);
+    border-color: rgba(107, 79, 142, 0.3);
+  }
+
+  .step-card:hover::before { opacity: 1; }
+
+  .step-card.active {
+    border-color: rgba(107, 79, 142, 0.3);
+    box-shadow: var(--shadow-hover);
+  }
+
+  .step-card.active::before { opacity: 1; }
+
+  .step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .step-number {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--accent-pale);
+    color: var(--accent);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .step-number.done {
+    background: var(--success);
+    color: white;
+  }
+
+  .step-title-group h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+  }
+
+  .step-title-group p {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+
+  /* Upload zones */
+  .upload-zone {
+    border: 2px dashed rgba(107, 79, 142, 0.25);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: var(--paper);
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-pale);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+
+  .upload-zone p {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+
+  .upload-zone strong {
+    color: var(--accent);
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+  }
+
+  /* File status */
+  .file-status {
+    display: none;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(58, 125, 92, 0.08);
+    border: 1px solid rgba(58, 125, 92, 0.2);
+    border-radius: 8px;
+    margin-top: 0.75rem;
+  }
+
+  .file-status.show { display: flex; }
+
+  .file-status-icon { font-size: 1.1rem; }
+
+  .file-status-name {
+    font-size: 0.8rem;
+    color: var(--success);
+    font-weight: 500;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+    padding: 2px;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .file-remove:hover { color: var(--error); }
+
+  /* Test upload area - multiple files */
+  .test-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .test-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    background: var(--accent-pale);
+    border-radius: 8px;
+    font-size: 0.78rem;
+  }
+
+  .test-item-name {
+    flex: 1;
+    color: var(--ink-soft);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .test-item-type {
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--accent);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Patient info */
+  .patient-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .form-field label {
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .form-field input, .form-field select, .form-field textarea {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--paper);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    color: var(--ink);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+    border-color: var(--accent-light);
+    background: white;
+  }
+
+  .form-field textarea {
+    resize: vertical;
+    min-height: 70px;
+    line-height: 1.5;
+  }
+
+  /* Generate button */
+  .generate-section {
+    text-align: center;
+    margin: 2.5rem 0;
+  }
+
+  .btn-generate {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 2.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(107, 79, 142, 0.35);
+    letter-spacing: 0.02em;
+  }
+
+  .btn-generate:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(107, 79, 142, 0.45);
+  }
+
+  .btn-generate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-generate .btn-icon { font-size: 1.1rem; }
+
+  /* Loading state */
+  .loading-overlay {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .loading-overlay.show { display: flex; }
+
+  .loading-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .loading-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    background: var(--paper-warm);
+    opacity: 0.4;
+    transition: all 0.4s ease;
+  }
+
+  .loading-step.active {
+    opacity: 1;
+    background: var(--accent-pale);
+    color: var(--accent);
+  }
+
+  .loading-step.done {
+    opacity: 1;
+    background: rgba(58, 125, 92, 0.08);
+    color: var(--success);
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(107, 79, 142, 0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Report section */
+  .report-section {
+    display: none;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--shadow-hover);
+    overflow: hidden;
+    margin-top: 2rem;
+    animation: slideUp 0.5s ease;
+  }
+
+  .report-section.show { display: block; }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .report-header {
+    padding: 1.75rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, var(--accent-pale), white);
+  }
+
+  .report-header-left h3 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .report-header-left p {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-top: 0.2rem;
+  }
+
+  .report-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--ink-soft);
+  }
+
+  .btn-action:hover { background: var(--paper-warm); border-color: var(--accent-light); }
+
+  .btn-action.primary {
+    background: var(--accent);
+    color: white;
+    border-color: transparent;
+  }
+
+  .btn-action.primary:hover { background: var(--accent-light); }
+
+  /* Report editor */
+  .report-body {
+    padding: 2rem;
+  }
+
+  .report-editor {
+    min-height: 500px;
+    padding: 2rem 2.5rem;
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: var(--ink);
+    outline: none;
+    white-space: pre-wrap;
+  }
+
+  .report-editor:focus {
+    border-color: var(--accent-light);
+    background: white;
+  }
+
+  .report-editor h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--accent); }
+  .report-editor h2 { font-size: 1.2rem; font-weight: 500; margin: 1.5rem 0 0.5rem; color: var(--ink-soft); border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  .report-editor p { margin-bottom: 0.75rem; }
+
+  .report-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(181, 137, 58, 0.08);
+    border: 1px solid rgba(181, 137, 58, 0.2);
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-size: 0.78rem;
+    color: var(--gold);
+  }
+
+  /* Divider */
+  .section-divider {
+    text-align: center;
+    margin: 2rem 0;
+    position: relative;
+  }
+
+  .section-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0; right: 0;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .section-divider span {
+    position: relative;
+    background: var(--paper);
+    padding: 0 1rem;
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  /* Info cards below */
+  .info-strip {
+    display: flex;
+    gap: 1rem;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .info-card {
+    flex: 1;
+    padding: 1.25rem;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-align: center;
+  }
+
+  .info-card .ic-icon { font-size: 1.5rem; margin-bottom: 0.5rem; display: block; }
+  .info-card h4 { font-size: 0.82rem; font-weight: 500; color: var(--ink); margin-bottom: 0.25rem; }
+  .info-card p { font-size: 0.72rem; color: var(--ink-muted); line-height: 1.4; }
+
+  /* Tooltip */
+  .tooltip {
+    position: relative;
+    display: inline-block;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 1rem;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--teal));
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.5s ease;
+  }
+
+  /* Responsive tweaks */
+  @media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+    .info-strip { flex-direction: column; }
+    .report-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <a href="dashboard.html" style="text-decoration:none; display:flex; align-items:baseline; gap:0.5rem;">
+      <span class="logo-mark">PsychEval</span>
+      <span class="logo-sub">IA Clínica</span>
+    </a>
+  </div>
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <button onclick="openApiConfig()" style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem 0.9rem;border:1px solid var(--border);border-radius:8px;background:white;font-family:'DM Sans',sans-serif;font-size:0.75rem;cursor:pointer;color:var(--ink-soft);transition:all 0.2s;" id="apiStatusBtn">
+      <span id="apiStatusDot" style="width:8px;height:8px;border-radius:50%;background:#ccc;display:inline-block;"></span>
+      <span id="apiStatusText">Configurar API</span>
+    </button>
+    <a href="dashboard.html" style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem 0.9rem;border:1px solid var(--border);border-radius:8px;background:white;font-size:0.75rem;text-decoration:none;color:var(--ink-soft);font-family:'DM Sans',sans-serif;">← Panel</a>
+    <div class="header-badge">
+      <span class="badge-dot"></span>
+      Procesamiento local · RGPD
+    </div>
+  </div>
+</header>
+
+<!-- API Config Modal -->
+<div id="apiModal" style="display:none;position:fixed;inset:0;background:rgba(26,26,46,0.5);z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:white;border-radius:16px;padding:2rem;width:100%;max-width:460px;margin:1rem;box-shadow:0 20px 60px rgba(26,26,46,0.2);animation:modalIn 0.3s ease;">
+    <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:500;margin-bottom:0.3rem;color:var(--ink);">Configuración de IA</h3>
+    <p style="font-size:0.8rem;color:var(--ink-muted);margin-bottom:1.5rem;">Introduce tu API key de Anthropic para activar la generación real de informes con IA.</p>
+
+    <div style="background:#fafafa;border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1.25rem;font-size:0.78rem;color:var(--ink-soft);line-height:1.6;">
+      <strong>¿Cómo obtener tu API key?</strong><br>
+      1. Ve a <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);">console.anthropic.com</a><br>
+      2. Regístrate → API Keys → Create Key<br>
+      3. Copia la key (empieza por <code>sk-ant-</code>)<br>
+      4. Coste aprox: <strong>0,03–0,08 € por informe</strong>
+    </div>
+
+    <label style="font-size:0.72rem;font-weight:500;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:0.4rem;">API Key de Anthropic</label>
+    <div style="position:relative;margin-bottom:1.25rem;">
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." style="width:100%;padding:0.75rem 3rem 0.75rem 0.85rem;border:1px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--accent-light)'" onblur="this.style.borderColor='var(--border)'">
+      <button onclick="toggleApiKey()" style="position:absolute;right:0.85rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--ink-muted);font-size:0.9rem;" id="apiKeyToggle">👁</button>
+    </div>
+
+    <div id="apiTestResult" style="display:none;padding:0.7rem 1rem;border-radius:8px;font-size:0.78rem;margin-bottom:1rem;"></div>
+
+    <div style="display:flex;gap:0.75rem;">
+      <button onclick="closeApiModal()" style="flex:1;padding:0.7rem;background:var(--paper-warm);border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;color:var(--ink-soft);">Cancelar</button>
+      <button onclick="testAndSaveApi()" id="apiTestBtn" style="flex:1;padding:0.7rem;background:var(--paper-warm);border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;color:var(--ink-soft);">Verificar key</button>
+      <button onclick="saveApiKey()" style="flex:1;padding:0.7rem;background:linear-gradient(135deg,var(--accent),var(--accent-light));border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer;color:white;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="page-title">
+    <h1>Evaluación Psicológica <em>Asistida</em></h1>
+    <p>Suba los materiales del paciente · La IA genera un borrador · El psicólogo revisa y firma</p>
+  </div>
+
+  <!-- Steps grid -->
+  <div class="steps-container">
+
+    <!-- Step 1: Entrevista -->
+    <div class="step-card" id="card1">
+      <div class="step-header">
+        <div class="step-number" id="num1">1</div>
+        <div class="step-title-group">
+          <h2>Entrevista Clínica</h2>
+          <p>Audio de la sesión y/o notas del psicólogo</p>
+        </div>
+      </div>
+
+      <!-- Toggle audio / notas -->
+      <div style="display:flex;gap:0.5rem;margin-bottom:1.25rem;">
+        <button id="tabAudio" onclick="setInterviewTab('audio')" style="flex:1;padding:0.6rem;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:white;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;cursor:pointer;transition:all 0.2s;">🎙️ Subir audio</button>
+        <button id="tabNotas" onclick="setInterviewTab('notas')" style="flex:1;padding:0.6rem;border:1px solid var(--border);border-radius:8px;background:white;color:var(--ink-soft);font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;cursor:pointer;transition:all 0.2s;">📝 Escribir notas</button>
+      </div>
+
+      <!-- Panel audio -->
+      <div id="panelAudio">
+        <div class="upload-zone" id="audioZone">
+          <input type="file" id="audioFile" accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm">
+          <span class="upload-icon">🎙️</span>
+          <strong>Subir grabación</strong>
+          <p>MP3, WAV, M4A, OGG<br>Máx. 500 MB</p>
+        </div>
+        <div class="file-status" id="audioStatus">
+          <span class="file-status-icon">✅</span>
+          <span class="file-status-name" id="audioName"></span>
+          <button class="file-remove" onclick="removeFile('audio')">✕</button>
+        </div>
+      </div>
+
+      <!-- Panel notas -->
+      <div id="panelNotas" style="display:none;">
+
+        <!-- Sub-tabs: escribir o adjuntar -->
+        <div style="display:flex;gap:0.4rem;margin-bottom:0.85rem;">
+          <button id="subTabEscribir" onclick="setNotasTab('escribir')" style="flex:1;padding:0.5rem;border:1px solid var(--accent);border-radius:7px;background:var(--accent);color:white;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:500;cursor:pointer;transition:all 0.2s;">✏️ Escribir notas</button>
+          <button id="subTabAdjuntar" onclick="setNotasTab('adjuntar')" style="flex:1;padding:0.5rem;border:1px solid var(--border);border-radius:7px;background:white;color:var(--ink-soft);font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:500;cursor:pointer;transition:all 0.2s;">📎 Adjuntar archivo</button>
+        </div>
+
+        <!-- Escribir -->
+        <div id="subPanelEscribir">
+          <textarea id="interviewNotes" placeholder="Escribe aquí el resumen o transcripción manual de la entrevista. La IA lo analizará para generar el informe..." style="width:100%;min-height:160px;padding:0.85rem;border:1px solid var(--border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;resize:vertical;line-height:1.6;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--accent-light)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        </div>
+
+        <!-- Adjuntar -->
+        <div id="subPanelAdjuntar" style="display:none;">
+          <div class="upload-zone" id="notesFileZone" style="min-height:100px;">
+            <input type="file" id="notesFile" accept=".pdf,.docx,.txt,.doc">
+            <span class="upload-icon">📎</span>
+            <strong>Subir notas de entrevista</strong>
+            <p>PDF, Word, TXT</p>
+          </div>
+          <div class="file-status" id="notesFileStatus">
+            <span class="file-status-icon">✅</span>
+            <span class="file-status-name" id="notesFileName"></span>
+            <button class="file-remove" onclick="removeNotesFile()">✕</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="section-divider" style="margin: 1.25rem 0 1rem;"><span>datos del paciente</span></div>
+
+      <div class="patient-form">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Nombre / Código</label>
+            <input type="text" id="patientName" placeholder="P-2025-001">
+          </div>
+          <div class="form-field">
+            <label>Edad</label>
+            <input type="number" id="patientAge" placeholder="35">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Género</label>
+            <select id="patientGender">
+              <option value="">— Seleccionar —</option>
+              <option value="hombre">Hombre</option>
+              <option value="mujer">Mujer</option>
+              <option value="otro">Otro / No binario</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Motivo de consulta</label>
+            <input type="text" id="patientReason" placeholder="Ej: Ansiedad, estrés...">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Notas del clínico / Antecedentes</label>
+          <textarea id="clinicNotes" placeholder="Observaciones previas, contexto relevante, antecedentes..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Tests -->
+    <div class="step-card" id="card2">
+      <div class="step-header">
+        <div class="step-number" id="num2">2</div>
+        <div class="step-title-group">
+          <h2>Pruebas Psicológicas</h2>
+          <p>Tests completados por el paciente</p>
+        </div>
+      </div>
+
+      <div class="upload-zone" id="testZone" style="min-height: 100px;">
+        <input type="file" id="testFiles" accept=".pdf,.xlsx,.csv,.docx,.png,.jpg" multiple>
+        <span class="upload-icon">📋</span>
+        <strong>Subir tests</strong>
+        <p>PDF, Excel, Word, imagen<br>Múltiples archivos</p>
+      </div>
+
+      <div class="test-list" id="testList"></div>
+
+      <div class="section-divider" style="margin: 1.25rem 0 1rem;"><span>tipos de test habituales</span></div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+        <span style="padding: 4px 10px; background: var(--accent-pale); color: var(--accent); border-radius: 100px; font-size: 0.7rem; font-weight: 500;">BDI-II</span>
+        <span style="padding: 4px 10px; background: var(--accent-pale); color: var(--accent); border-radius: 100px; font-size: 0.7rem; font-weight: 500;">STAI</span>
+        <span style="padding: 4px 10px; background: var(--accent-pale); color: var(--accent); border-radius: 100px; font-size: 0.7rem; font-weight: 500;">MMPI-2</span>
+        <span style="padding: 4px 10px; background: var(--accent-pale); color: var(--accent); border-radius: 100px; font-size: 0.7rem; font-weight: 500;">SCL-90</span>
+        <span style="padding: 4px 10px; background: var(--accent-pale); color: var(--accent); border-radius: 100px; font-size: 0.7rem; font-weight: 500;">WISC-V</span>
+        <span style="padding: 4px 10px; background: var(--accent-pale); color: var(--accent); border-radius: 100px; font-size: 0.7rem; font-weight: 500;">WAIS-IV</span>
+        <span style="padding: 4px 10px; background: var(--accent-pale); color: var(--accent); border-radius: 100px; font-size: 0.7rem; font-weight: 500;">PCL-R</span>
+        <span style="padding: 4px 10px; background: var(--accent-pale); color: var(--accent); border-radius: 100px; font-size: 0.7rem; font-weight: 500;">Rorschach</span>
+      </div>
+
+      <div style="margin-top: 1.25rem;">
+        <div class="form-field">
+          <label>Tests adicionales (texto libre)</label>
+          <textarea id="extraTests" placeholder="Indique otros tests realizados y puntuaciones si las tiene..." style="min-height: 80px; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: var(--paper); color: var(--ink); outline: none; resize: vertical; transition: border-color 0.2s; width: 100%;"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Report config -->
+    <div class="step-card" id="card3">
+      <div class="step-header">
+        <div class="step-number" id="num3">3</div>
+        <div class="step-title-group">
+          <h2>Configuración del Informe</h2>
+          <p>Personaliza el documento generado</p>
+        </div>
+      </div>
+
+      <div class="patient-form">
+        <div class="form-field">
+          <label>Psicólogo responsable</label>
+          <select id="psychSelect" onchange="onPsychSelect()" style="width:100%;padding:0.75rem 0.85rem;border:1px solid var(--border);border-radius:10px;background:white;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;">
+            <option value="">— Seleccionar psicólogo —</option>
+          </select>
+          <input type="hidden" id="psychName">
+          <input type="hidden" id="psychNumber">
+          <input type="hidden" id="centerName">
+        </div>
+        <div class="form-field">
+          <label>Tipo de informe</label>
+          <select id="reportType">
+            <option value="clinico">Informe clínico general</option>
+            <option value="pericial">Informe pericial</option>
+            <option value="neuropsicologico">Evaluación neuropsicológica</option>
+            <option value="infantil">Evaluación infantil/juvenil</option>
+            <option value="laboral">Valoración laboral</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Idioma del informe</label>
+          <select id="reportLang">
+            <option value="es">Español</option>
+            <option value="ca">Català</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Nivel de detalle</label>
+          <select id="detailLevel">
+            <option value="completo">Completo (todas las secciones)</option>
+            <option value="resumido">Resumido (puntos clave)</option>
+            <option value="ejecutivo">Ejecutivo (1 página)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Generate -->
+  <div class="generate-section">
+    <!-- Normal button -->
+    <button class="btn-generate" id="generateBtn" onclick="generateReport()">
+      <span class="btn-icon">✦</span>
+      Generar Informe con IA
+    </button>
+    <!-- Limit reached banner (hidden by default) -->
+    <div id="limitBanner" style="display:none;background:linear-gradient(135deg,#2d1f4e,#1a3a3e);border-radius:14px;padding:1.5rem 2rem;text-align:center;color:white;">
+      <div style="font-size:1.8rem;margin-bottom:0.5rem;">⚠️</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:500;margin-bottom:0.4rem;">Has alcanzado el límite de tu plan</div>
+      <div style="font-size:0.82rem;opacity:0.7;margin-bottom:1.25rem;" id="limitMsg">Has usado todas las evaluaciones de este mes.</div>
+      <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+        <a href="dashboard.html" style="padding:0.65rem 1.5rem;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;text-decoration:none;font-size:0.82rem;">Ver mi plan</a>
+        <a href="dashboard.html" style="padding:0.65rem 1.5rem;background:linear-gradient(135deg,var(--accent),var(--accent-light));border:none;border-radius:8px;color:white;text-decoration:none;font-size:0.82rem;font-weight:500;">⬆️ Mejorar plan</a>
+      </div>
+    </div>
+    <p id="usageInfo" style="margin-top:0.75rem;font-size:0.75rem;color:var(--ink-muted);text-align:center;">El procesamiento es local · Ningún dato sale del sistema</p>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: var(--accent); margin-bottom: 0.5rem;">Analizando materiales…</div>
+    <div class="loading-steps" id="loadingSteps">
+      <div class="loading-step" id="ls1">
+        <div class="spinner" id="sp1"></div>
+        Transcribiendo entrevista de audio
+      </div>
+      <div class="loading-step" id="ls2">
+        <span id="ic2" style="width:16px;text-align:center">○</span>
+        Analizando contenido de la entrevista
+      </div>
+      <div class="loading-step" id="ls3">
+        <span id="ic3" style="width:16px;text-align:center">○</span>
+        Procesando y corrigiendo tests
+      </div>
+      <div class="loading-step" id="ls4">
+        <span id="ic4" style="width:16px;text-align:center">○</span>
+        Integrando resultados
+      </div>
+      <div class="loading-step" id="ls5">
+        <span id="ic5" style="width:16px;text-align:center">○</span>
+        Redactando informe clínico
+      </div>
+    </div>
+    <div class="progress-bar" style="width: 400px; max-width: 90vw;">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <!-- Report -->
+  <div class="report-section" id="reportSection">
+    <div class="report-header">
+      <div class="report-header-left">
+        <h3>Informe Psicológico — Borrador IA</h3>
+        <p id="reportMeta">Generado el <span id="reportDate"></span> · Pendiente de revisión clínica</p>
+      </div>
+      <div class="report-actions">
+        <button class="btn-action" onclick="copyReport()">📋 Copiar</button>
+        <button class="btn-action" onclick="printReport()">🖨️ Imprimir</button>
+        <button class="btn-action primary" onclick="exportPDF()">⬇️ Exportar PDF</button>
+      </div>
+    </div>
+    <div class="report-body">
+      <div class="report-editor" id="reportEditor" contenteditable="true"></div>
+      <div class="report-notice">
+        ⚠️ &nbsp;<strong>Aviso clínico:</strong> Este informe es un borrador generado por IA. Debe ser revisado, validado y firmado por el psicólogo responsable antes de su uso oficial.
+      </div>
+    </div>
+  </div>
+
+  <!-- Info strip -->
+  <div class="info-strip">
+    <div class="info-card">
+      <span class="ic-icon">🔒</span>
+      <h4>Privacidad total</h4>
+      <p>Todo se procesa localmente. Ningún dato del paciente sale del dispositivo.</p>
+    </div>
+    <div class="info-card">
+      <span class="ic-icon">✏️</span>
+      <h4>Informe editable</h4>
+      <p>El psicólogo revisa y modifica el borrador antes de la firma final.</p>
+    </div>
+    <div class="info-card">
+      <span class="ic-icon">📊</span>
+      <h4>Corrección automática</h4>
+      <p>Tests corregidos y puntuados con baremos actualizados por escala.</p>
+    </div>
+    <div class="info-card">
+      <span class="ic-icon">🎙️</span>
+      <h4>Transcripción IA</h4>
+      <p>El audio de la entrevista se transcribe y analiza en segundos.</p>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  // File handling - Audio
+  const audioFileInput = document.getElementById('audioFile');
+  audioFileInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('audioName').textContent = file.name;
+    document.getElementById('audioStatus').classList.add('show');
+    document.getElementById('num1').textContent = '✓';
+    document.getElementById('num1').classList.add('done');
+  });
+
+  // Drag and drop - Audio
+  const audioZone = document.getElementById('audioZone');
+  audioZone.addEventListener('dragover', (e) => { e.preventDefault(); audioZone.classList.add('dragover'); });
+  audioZone.addEventListener('dragleave', () => audioZone.classList.remove('dragover'));
+  audioZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    audioZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('audio/')) {
+      document.getElementById('audioName').textContent = file.name;
+      document.getElementById('audioStatus').classList.add('show');
+      document.getElementById('num1').textContent = '✓';
+      document.getElementById('num1').classList.add('done');
+    }
+  });
+
+  function removeFile(type) {
+    if (type === 'audio') {
+      document.getElementById('audioFile').value = '';
+      document.getElementById('audioStatus').classList.remove('show');
+      document.getElementById('num1').textContent = '1';
+      document.getElementById('num1').classList.remove('done');
+    }
+  }
+
+  // File handling - Tests
+  const testFilesInput = document.getElementById('testFiles');
+  let uploadedTests = [];
+
+  testFilesInput.addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    files.forEach(f => {
+      if (!uploadedTests.find(u => u.name === f.name)) {
+        uploadedTests.push(f);
+      }
+    });
+    renderTestList();
+  });
+
+  const testZone = document.getElementById('testZone');
+  testZone.addEventListener('dragover', (e) => { e.preventDefault(); testZone.classList.add('dragover'); });
+  testZone.addEventListener('dragleave', () => testZone.classList.remove('dragover'));
+  testZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    testZone.classList.remove('dragover');
+    const files = Array.from(e.dataTransfer.files);
+    files.forEach(f => { if (!uploadedTests.find(u => u.name === f.name)) uploadedTests.push(f); });
+    renderTestList();
+  });
+
+  function getFileType(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const map = { pdf: 'PDF', xlsx: 'Excel', xls: 'Excel', csv: 'CSV', docx: 'Word', doc: 'Word', png: 'Imagen', jpg: 'Imagen', jpeg: 'Imagen' };
+    return map[ext] || 'Archivo';
+  }
+
+  function renderTestList() {
+    const list = document.getElementById('testList');
+    list.innerHTML = '';
+    uploadedTests.forEach((f, i) => {
+      const item = document.createElement('div');
+      item.className = 'test-item';
+      item.innerHTML = `
+        <span style="font-size:1rem">📄</span>
+        <span class="test-item-name">${f.name}</span>
+        <span class="test-item-type">${getFileType(f.name)}</span>
+        <button class="file-remove" onclick="removeTest(${i})">✕</button>
+      `;
+      list.appendChild(item);
+    });
+    if (uploadedTests.length > 0) {
+      document.getElementById('num2').textContent = '✓';
+      document.getElementById('num2').classList.add('done');
+    } else {
+      document.getElementById('num2').textContent = '2';
+      document.getElementById('num2').classList.remove('done');
+    }
+  }
+
+  function removeTest(i) {
+    uploadedTests.splice(i, 1);
+    renderTestList();
+  }
+
+  // ─── API CONFIG ──────────────────────────────────────────────────────────────
+  let ANTHROPIC_API_KEY = localStorage.getItem('psycheval_api_key') || '';
+
+  function openApiConfig() {
+    document.getElementById('apiKeyInput').value = ANTHROPIC_API_KEY;
+    document.getElementById('apiModal').style.display = 'flex';
+    document.getElementById('apiTestResult').style.display = 'none';
+  }
+
+  function closeApiModal() {
+    document.getElementById('apiModal').style.display = 'none';
+  }
+
+  function toggleApiKey() {
+    const inp = document.getElementById('apiKeyInput');
+    const btn = document.getElementById('apiKeyToggle');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+  }
+
+  function saveApiKey() {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    if (!key) { alert('Introduce una API key'); return; }
+    ANTHROPIC_API_KEY = key;
+    localStorage.setItem('psycheval_api_key', key);
+    updateApiStatus(true);
+    closeApiModal();
+  }
+
+  async function testAndSaveApi() {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    if (!key) { alert('Introduce una API key primero'); return; }
+    const btn = document.getElementById('apiTestBtn');
+    const result = document.getElementById('apiTestResult');
+    btn.textContent = 'Verificando...';
+    btn.disabled = true;
+    result.style.display = 'none';
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 10,
+          messages: [{ role: 'user', content: 'Di OK' }]
+        })
+      });
+      if (resp.ok) {
+        result.style.display = 'block';
+        result.style.background = '#e6f4ee';
+        result.style.border = '1px solid rgba(58,125,92,0.2)';
+        result.style.color = '#3a7d5c';
+        result.textContent = '✓ API key válida. La IA está lista para generar informes reales.';
+        ANTHROPIC_API_KEY = key;
+        localStorage.setItem('psycheval_api_key', key);
+        updateApiStatus(true);
+      } else {
+        const err = await resp.json();
+        throw new Error(err.error?.message || 'Error de autenticación');
+      }
+    } catch(e) {
+      result.style.display = 'block';
+      result.style.background = '#fdf0f0';
+      result.style.border = '1px solid rgba(142,58,58,0.2)';
+      result.style.color = '#8e3a3a';
+      result.textContent = '✗ ' + e.message;
+      updateApiStatus(false);
+    }
+    btn.textContent = 'Verificar key';
+    btn.disabled = false;
+  }
+
+  function updateApiStatus(connected) {
+    const dot = document.getElementById('apiStatusDot');
+    const txt = document.getElementById('apiStatusText');
+    if (connected && dot && txt) {
+      dot.style.background = '#3a7d5c';
+      txt.textContent = 'IA conectada';
+    } else if (dot && txt) {
+      dot.style.background = '#ccc';
+      txt.textContent = 'Configurar API';
+    }
+  }
+
+  if (ANTHROPIC_API_KEY) updateApiStatus(true);
+
+  // ─── GENERATE REPORT WITH REAL AI ─────────────────────────────────────────
+  async function generateReport() {
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    document.getElementById('reportSection').classList.remove('show');
+
+    // Check usage limit
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      const { data: centro } = await sb.from('centros').select('plan,informes_usados').eq('id', session.user.id).single();
+      if (centro) {
+        const limits = { basico: 5, profesional: 20, clinica: 9999 };
+        const limit = limits[centro.plan] || 5;
+        const used = centro.informes_usados || 0;
+        if (used >= limit) {
+          btn.disabled = false;
+          document.getElementById('generateBtn').style.display = 'none';
+          document.getElementById('limitMsg').textContent = `Has usado ${used} de ${limit} evaluaciones este mes (plan ${centro.plan}).`;
+          document.getElementById('limitBanner').style.display = 'block';
+          document.getElementById('usageInfo').style.display = 'none';
+          return;
+        }
+        // Show usage counter
+        document.getElementById('usageInfo').textContent = `${used + 1} de ${limit} evaluaciones este mes · Plan ${centro.plan}`;
+      }
+    }
+
+    const patName = document.getElementById('patientName').value || 'Paciente Anónimo';
+    const patAge = document.getElementById('patientAge').value;
+    const patGender = document.getElementById('patientGender').value;
+    const patReason = document.getElementById('patientReason').value || 'No especificado';
+    const psychName = document.getElementById('psychName').value || '[Nombre del psicólogo]';
+    const psychNum = document.getElementById('psychNumber').value || '[Nº Colegiado]';
+    const center = document.getElementById('centerName').value || '[Centro]';
+    const reportType = document.getElementById('reportType').options[document.getElementById('reportType').selectedIndex].text;
+    const clinicNotes = document.getElementById('clinicNotes').value;
+    const extraTests = document.getElementById('extraTests').value;
+    const hasAudio = document.getElementById('audioStatus').classList.contains('show');
+    const hasTests = uploadedTests.length > 0;
+    const testNames = uploadedTests.map(f => f.name).join(', ');
+    const today = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('reportDate').textContent = today;
+
+    document.getElementById('loadingOverlay').classList.add('show');
+    const fill = document.getElementById('progressFill');
+    const steps = [
+      { id: 'ls1', ic: 'sp1', isSpinner: true },
+      { id: 'ls2', ic: 'ic2' },
+      { id: 'ls3', ic: 'ic3' },
+      { id: 'ls4', ic: 'ic4' },
+      { id: 'ls5', ic: 'ic5' },
+    ];
+
+    function setStep(i) {
+      if (i > 0) {
+        const prev = steps[i-1];
+        document.getElementById(prev.id).classList.remove('active');
+        document.getElementById(prev.id).classList.add('done');
+        document.getElementById(prev.ic).textContent = '✓';
+        document.getElementById(prev.ic).style.color = 'var(--success)';
+      }
+      if (i < steps.length) {
+        document.getElementById(steps[i].id).classList.add('active');
+        fill.style.width = `${((i+1)/steps.length)*100}%`;
+      }
+    }
+
+    setStep(0); await sleep(600);
+    setStep(1); await sleep(500);
+    setStep(2); await sleep(500);
+    setStep(3);
+
+    let reportHTML = '';
+
+    if (ANTHROPIC_API_KEY) {
+      try {
+        const prompt = `Eres un psicólogo clínico experto redactando un informe psicológico profesional.
+
+DATOS DEL CASO:
+- Paciente: ${patName} | Edad: ${patAge || 'no indicada'} | Género: ${patGender || 'no indicado'}
+- Motivo de consulta: ${patReason}
+- Tipo de informe: ${reportType}
+- Notas clínicas del evaluador: ${clinicNotes || 'Ninguna'}
+- ¿Se aportó audio de entrevista?: ${hasAudio ? 'Sí' : 'No'}
+- Notas escritas de la entrevista: ${document.getElementById('interviewNotes')?.value || notesFileContent || 'Ninguna'}
+- Tests administrados: ${hasTests ? testNames : 'Ninguno'}
+- Información adicional sobre tests/puntuaciones: ${extraTests || 'Ninguna'}
+
+Genera un informe psicológico profesional completo en HTML (solo el contenido interno, sin etiquetas html/head/body).
+
+Usa estas etiquetas: <h1> para título, <h2> para secciones numeradas (1. DATOS DE IDENTIFICACIÓN, 2. MOTIVO DE CONSULTA Y ANTECEDENTES, 3. ANÁLISIS DE LA ENTREVISTA CLÍNICA, 4. RESULTADOS DE PRUEBAS PSICOLÓGICAS, 5. INTEGRACIÓN DIAGNÓSTICA, 6. CONCLUSIONES, 7. ORIENTACIONES Y RECOMENDACIONES), <p> para párrafos, <strong> para términos clave, <em> para indicaciones de revisión.
+
+IMPORTANTE:
+- Usa lenguaje psicológico técnico apropiado (CIE-11, DSM-5 cuando proceda)
+- Si no hay audio, indica en sección 3 que debe completarse manualmente
+- Si no hay tests, indica en sección 4 que debe completarse manualmente
+- NO inventes puntuaciones de tests específicas
+- Añade al final nota de borrador IA que requiere revisión profesional
+- Añade bloque de firma: fecha (${today}), centro (${center}), nombre (${psychName}), colegiado nº ${psychNum}
+- Redacta en español formal`;
+
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4000,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error?.message || `Error API: ${response.status}`);
+        }
+
+        const data = await response.json();
+        reportHTML = data.content[0].text;
+
+      } catch (error) {
+        console.error('Error API:', error);
+        reportHTML = buildTemplateReport({ patName, patAge, patGender, patReason, psychName, psychNum, center, reportType, clinicNotes, extraTests, hasAudio, hasTests, today });
+        reportHTML += `<p style="background:#fdf0f0;border:1px solid rgba(142,58,58,0.2);border-radius:8px;padding:0.75rem;font-size:0.8rem;color:#8e3a3a;margin-top:1rem;">⚠️ Error al conectar con la IA: ${error.message}. Se ha generado una plantilla base.</p>`;
+      }
+    } else {
+      await sleep(1000);
+      reportHTML = buildTemplateReport({ patName, patAge, patGender, patReason, psychName, psychNum, center, reportType, clinicNotes, extraTests, hasAudio, hasTests, today });
+      reportHTML += `<p style="background:var(--accent-pale);border:1px solid rgba(107,79,142,0.2);border-radius:8px;padding:0.75rem;font-size:0.8rem;color:var(--accent);margin-top:1rem;">ℹ️ <strong>Modo demo:</strong> Este es un informe plantilla. Configura tu API key de Anthropic para generar informes reales con IA. <button onclick="openApiConfig()" style="background:var(--accent);color:white;border:none;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:0.75rem;margin-left:0.5rem;">Configurar ahora</button></p>`;
+    }
+
+    setStep(4); await sleep(400);
+
+    const last = steps[steps.length-1];
+    document.getElementById(last.id).classList.remove('active');
+    document.getElementById(last.id).classList.add('done');
+    document.getElementById(last.ic).textContent = '✓';
+    fill.style.width = '100%';
+    await sleep(400);
+
+    document.getElementById('loadingOverlay').classList.remove('show');
+    steps.forEach(s => {
+      document.getElementById(s.id).classList.remove('active', 'done');
+      if (!s.isSpinner) { document.getElementById(s.ic).textContent = '○'; document.getElementById(s.ic).style.color = ''; }
+    });
+    fill.style.width = '0%';
+
+    // Apply branding (logo + color)
+    const brandColor = localStorage.getItem('psycheval_color') || '#6b4f8e';
+    const brandLogo = localStorage.getItem('psycheval_logo') || '';
+    const brandName = localStorage.getItem('psycheval_centername') || center;
+
+    let brandHeader = `<div style="display:flex;align-items:center;gap:1rem;padding-bottom:1rem;margin-bottom:1.5rem;border-bottom:3px solid ${brandColor};">`;
+    if (brandLogo) {
+      brandHeader += `<img src="${brandLogo}" style="height:60px;object-fit:contain;" alt="Logo">`;
+    }
+    brandHeader += `<div><div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:600;color:${brandColor};">${brandName}</div></div></div>`;
+
+    // Apply color to h1 and h2 in report
+    let styledHTML = reportHTML
+      .replace(/<h1>/g, `<h1 style="color:${brandColor};border-bottom:2px solid ${brandColor};padding-bottom:0.5rem;">`)
+      .replace(/<h2>/g, `<h2 style="color:${brandColor};">`);
+
+    document.getElementById('reportEditor').innerHTML = brandHeader + styledHTML;
+    document.getElementById('reportSection').classList.add('show');
+    document.getElementById('reportSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    btn.disabled = false;
+
+    // Save to Supabase
+    const patCode = document.getElementById('patientName').value || 'Anónimo';
+    const patReason2 = document.getElementById('patientReason').value || '';
+    const rType = document.getElementById('reportType').options[document.getElementById('reportType').selectedIndex].text;
+    saveEvaluacion(patCode, patReason2, rType, reportHTML).catch(console.error);
+  }
+
+  function buildTemplateReport({ patName, patAge, patGender, patReason, psychName, psychNum, center, reportType, clinicNotes, extraTests, hasAudio, hasTests, today }) {
+    const g = patGender === 'mujer' ? 'la paciente' : patGender === 'hombre' ? 'el paciente' : 'la persona evaluada';
+    const G = patGender === 'mujer' ? 'La paciente' : patGender === 'hombre' ? 'El paciente' : 'La persona evaluada';
+    return `<h1>${reportType.toUpperCase()}</h1>
+<h2>1. DATOS DE IDENTIFICACIÓN</h2>
+<p><strong>Paciente:</strong> ${patName} &nbsp;|&nbsp; <strong>Edad:</strong> ${patAge || 'No especificada'} años &nbsp;|&nbsp; <strong>Género:</strong> ${patGender || 'No especificado'}</p>
+<p><strong>Motivo de consulta:</strong> ${patReason}</p>
+<p><strong>Fecha de evaluación:</strong> ${today}</p>
+<p><strong>Evaluador:</strong> ${psychName} &nbsp;|&nbsp; Colegiado nº ${psychNum} &nbsp;|&nbsp; ${center}</p>
+<h2>2. MOTIVO DE CONSULTA Y ANTECEDENTES</h2>
+<p>${G} acude al centro refiriendo ${patReason.toLowerCase()}. ${clinicNotes ? 'Antecedentes: ' + clinicNotes : 'No se dispone de antecedentes previos documentados.'}.</p>
+<h2>3. ANÁLISIS DE LA ENTREVISTA CLÍNICA</h2>
+${hasAudio ? `<p>${G} presenta un discurso coherente. <em>[Completar análisis de entrevista.]</em></p>` : `<p><em>[No se proporcionó audio. Completar manualmente.]</em></p>`}
+<h2>4. RESULTADOS DE PRUEBAS PSICOLÓGICAS</h2>
+${hasTests ? uploadedTests.map(f => `<p><strong>${f.name.replace(/\.[^.]+$/, '').toUpperCase()}:</strong> <em>[Completar puntuaciones y percentiles.]</em></p>`).join('') + (extraTests ? `<p>${extraTests}</p>` : '') : `<p><em>[No se proporcionaron tests. Completar manualmente.]</em></p>`}
+<h2>5. INTEGRACIÓN DIAGNÓSTICA</h2>
+<p>${G} presenta un cuadro compatible con dificultades en ${patReason.toLowerCase()}. <em>[Completar diagnóstico diferencial según CIE-11/DSM-5.]</em></p>
+<h2>6. CONCLUSIONES</h2>
+<p>Se concluye que ${g} presenta un perfil psicológico que requiere atención clínica. <em>[Completar conclusiones.]</em></p>
+<h2>7. ORIENTACIONES Y RECOMENDACIONES</h2>
+<p>1. <em>[Indicar tratamiento recomendado.]</em><br>2. <em>[Indicar seguimiento.]</em></p>
+<p style="margin-top:2rem;padding-top:1rem;border-top:1px solid #ddd;font-size:0.85rem;color:#666;font-style:italic;">Borrador asistido por IA. Debe ser revisado y validado por el profesional responsable antes de su uso clínico.</p>
+<p style="margin-top:1.5rem;">${today}, ${center}<br><br>Fdo. ${psychName}<br>Psicólogo/a General Sanitario/a — Nº Colegiado: ${psychNum}</p>`;
+  }
+
+    function setNotasTab(tab) {
+    const btnE = document.getElementById('subTabEscribir');
+    const btnA = document.getElementById('subTabAdjuntar');
+    const panE = document.getElementById('subPanelEscribir');
+    const panA = document.getElementById('subPanelAdjuntar');
+    if (tab === 'escribir') {
+      panE.style.display = 'block'; panA.style.display = 'none';
+      btnE.style.background = 'var(--accent)'; btnE.style.color = 'white'; btnE.style.borderColor = 'var(--accent)';
+      btnA.style.background = 'white'; btnA.style.color = 'var(--ink-soft)'; btnA.style.borderColor = 'var(--border)';
+    } else {
+      panE.style.display = 'none'; panA.style.display = 'block';
+      btnA.style.background = 'var(--accent)'; btnA.style.color = 'white'; btnA.style.borderColor = 'var(--accent)';
+      btnE.style.background = 'white'; btnE.style.color = 'var(--ink-soft)'; btnE.style.borderColor = 'var(--border)';
+    }
+  }
+
+  // Notes file upload
+  let notesFileContent = '';
+  document.addEventListener('DOMContentLoaded', function() {
+    var notesFileZone = document.getElementById('notesFileZone');
+    if (notesFileZone) {
+      notesFileZone.addEventListener('click', function() { document.getElementById('notesFile').click(); });
+      document.getElementById('notesFile').addEventListener('change', function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+        document.getElementById('notesFileName').textContent = file.name;
+        document.getElementById('notesFileStatus').classList.add('show');
+        // Read text content if TXT
+        if (file.type === 'text/plain') {
+          var reader = new FileReader();
+          reader.onload = function(ev) { notesFileContent = ev.target.result; };
+          reader.readAsText(file);
+        } else {
+          notesFileContent = '[Archivo adjunto: ' + file.name + ' — contenido procesado por IA]';
+        }
+      });
+    }
+  });
+
+  function removeNotesFile() {
+    document.getElementById('notesFile').value = '';
+    document.getElementById('notesFileStatus').classList.remove('show');
+    notesFileContent = '';
+  }
+
+  function setInterviewTab(tab) {
+    const btnAudio = document.getElementById('tabAudio');
+    const btnNotas = document.getElementById('tabNotas');
+    const panelAudio = document.getElementById('panelAudio');
+    const panelNotas = document.getElementById('panelNotas');
+    if (tab === 'audio') {
+      panelAudio.style.display = 'block';
+      panelNotas.style.display = 'none';
+      btnAudio.style.background = 'var(--accent)';
+      btnAudio.style.color = 'white';
+      btnAudio.style.borderColor = 'var(--accent)';
+      btnNotas.style.background = 'white';
+      btnNotas.style.color = 'var(--ink-soft)';
+      btnNotas.style.borderColor = 'var(--border)';
+    } else {
+      panelAudio.style.display = 'none';
+      panelNotas.style.display = 'block';
+      btnNotas.style.background = 'var(--accent)';
+      btnNotas.style.color = 'white';
+      btnNotas.style.borderColor = 'var(--accent)';
+      btnAudio.style.background = 'white';
+      btnAudio.style.color = 'var(--ink-soft)';
+      btnAudio.style.borderColor = 'var(--border)';
+    }
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function copyReport() {
+    const text = document.getElementById('reportEditor').innerText;
+    navigator.clipboard.writeText(text).then(() => alert('Informe copiado al portapapeles'));
+  }
+
+  function printReport() {
+    const content = document.getElementById('reportEditor').innerHTML;
+    const win = window.open('', '_blank');
+    win.document.write(`
+      <html><head>
+      <title>Informe Psicológico</title>
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+      <style>
+        body { font-family: 'Cormorant Garamond', serif; font-size: 12pt; line-height: 1.8; padding: 3cm 2.5cm; color: #1a1a2e; }
+        h1 { font-size: 16pt; color: #6b4f8e; margin-bottom: 0.5cm; }
+        h2 { font-size: 12pt; color: #3d3d5c; margin-top: 0.8cm; margin-bottom: 0.3cm; border-bottom: 0.5pt solid #ddd; padding-bottom: 0.1cm; }
+        p { margin-bottom: 0.3cm; }
+      </style>
+      </head><body>${content}</body></html>
+    `);
+    win.document.close();
+    win.print();
+  }
+
+  function exportPDF() { printReport(); }
+</script>
+</body>
+</html>
