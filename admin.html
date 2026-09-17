@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PsychEval — Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:#1a1a2e;--ink-soft:#3d3d5c;--ink-muted:#8888aa;
+  --paper:#f8f6f1;--paper-warm:#f0ece3;
+  --accent:#6b4f8e;--accent-light:#9b7ec8;--accent-pale:#ede7f6;
+  --teal:#2d7d82;--gold:#b5893a;--gold-pale:#fdf4e3;
+  --success:#3a7d5c;--success-pale:#e6f4ee;
+  --error:#8e3a3a;--error-pale:#fdf0f0;
+  --border:rgba(107,79,142,0.12);
+  --shadow:0 2px 16px rgba(26,26,46,0.06);
+  --shadow-md:0 4px 32px rgba(26,26,46,0.1);
+  --sidebar-w:220px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;display:flex;}
+
+/* Login screen */
+.login-screen{width:100%;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--ink);}
+.login-box{background:white;border-radius:16px;padding:2.5rem;width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.login-box h2{font-family:'Cormorant Garamond',serif;font-size:1.6rem;color:var(--ink);margin-bottom:0.25rem;}
+.login-box p{font-size:0.78rem;color:var(--ink-muted);margin-bottom:1.5rem;}
+.login-field{margin-bottom:1rem;}
+.login-field label{display:block;font-size:0.72rem;font-weight:500;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;}
+.login-field input{width:100%;padding:0.75rem;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;}
+.login-field input:focus{border-color:var(--accent-light);}
+.login-btn{width:100%;padding:0.85rem;background:linear-gradient(135deg,var(--accent),var(--accent-light));color:white;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer;margin-top:0.5rem;}
+.login-error{color:var(--error);font-size:0.78rem;margin-top:0.5rem;display:none;}
+
+/* Sidebar */
+.sidebar{width:var(--sidebar-w);background:var(--ink);min-height:100vh;display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;top:0;left:0;bottom:0;z-index:100;}
+.sidebar-logo{padding:0.5rem 1.5rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:1rem;}
+.logo-mark{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:600;color:white;}
+.logo-sub{display:block;font-size:0.6rem;color:rgba(255,255,255,0.3);letter-spacing:0.15em;text-transform:uppercase;margin-top:0.1rem;}
+.admin-badge{display:inline-block;background:var(--gold);color:white;font-size:0.6rem;padding:2px 6px;border-radius:4px;margin-top:0.3rem;font-weight:600;letter-spacing:0.05em;}
+.nav-section{padding:0 0.75rem;margin-bottom:0.5rem;}
+.nav-item{display:flex;align-items:center;gap:0.65rem;padding:0.65rem 0.75rem;border-radius:8px;cursor:pointer;transition:all 0.2s;color:rgba(255,255,255,0.5);font-size:0.82rem;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);}
+.nav-item.active{background:rgba(107,79,142,0.3);color:white;}
+.nav-icon{font-size:1rem;width:20px;text-align:center;}
+.sidebar-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,0.06);}
+.logout-btn{background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.4);font-size:0.78rem;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:0.4rem;}
+.logout-btn:hover{color:rgba(255,255,255,0.7);}
+
+/* Main */
+.main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;}
+.topbar{background:white;border-bottom:1px solid var(--border);padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:500;}
+.topbar-right{display:flex;align-items:center;gap:0.75rem;}
+.topbar-date{font-size:0.75rem;color:var(--ink-muted);}
+
+.page{padding:2rem;display:none;}
+.page.active{display:block;}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-bottom:2rem;}
+.stat-card{background:white;border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;box-shadow:var(--shadow);}
+.stat-label{font-size:0.72rem;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;}
+.stat-value{font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:600;color:var(--ink);line-height:1;}
+.stat-sub{font-size:0.72rem;color:var(--ink-muted);margin-top:0.3rem;}
+.stat-trend{display:inline-flex;align-items:center;gap:0.2rem;font-size:0.72rem;padding:2px 7px;border-radius:100px;background:var(--success-pale);color:var(--success);}
+
+/* Card */
+.card{background:white;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:1.25rem;}
+.card-header{padding:1.1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:500;}
+.card-action{font-size:0.75rem;color:var(--accent);cursor:pointer;text-decoration:none;font-weight:500;border:none;background:none;}
+
+/* Table */
+table{width:100%;border-collapse:collapse;}
+th{padding:0.7rem 1.25rem;text-align:left;font-size:0.68rem;font-weight:500;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.08em;background:var(--paper);border-bottom:1px solid var(--border);}
+td{padding:0.85rem 1.25rem;font-size:0.82rem;color:var(--ink-soft);border-bottom:1px solid rgba(107,79,142,0.05);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(107,79,142,0.02);}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;gap:0.3rem;padding:3px 8px;border-radius:100px;font-size:0.68rem;font-weight:500;}
+.badge.active{background:var(--success-pale);color:var(--success);}
+.badge.inactive{background:var(--paper-warm);color:var(--ink-muted);}
+.badge.basico{background:var(--paper-warm);color:var(--ink-soft);}
+.badge.profesional{background:var(--accent-pale);color:var(--accent);}
+.badge.clinica{background:var(--gold-pale);color:var(--gold);}
+
+/* Action btn */
+.tbl-btn{padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--ink-soft);transition:all 0.2s;font-family:'DM Sans',sans-serif;}
+.tbl-btn:hover{border-color:var(--accent-light);color:var(--accent);background:var(--accent-pale);}
+.tbl-btn.danger:hover{border-color:var(--error);color:var(--error);background:var(--error-pale);}
+
+/* Revenue card */
+.revenue-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:2rem;}
+.revenue-card{background:linear-gradient(135deg,var(--accent),var(--teal));border-radius:14px;padding:1.5rem;color:white;}
+.revenue-card h3{font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:400;opacity:0.8;margin-bottom:0.4rem;}
+.revenue-card .amount{font-family:'Cormorant Garamond',serif;font-size:2.5rem;font-weight:600;}
+.revenue-card .sub{font-size:0.75rem;opacity:0.7;margin-top:0.25rem;}
+
+/* Search */
+.search-bar{display:flex;gap:0.75rem;margin-bottom:1.25rem;}
+.search-input{flex:1;padding:0.65rem 1rem;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;}
+.search-input:focus{border-color:var(--accent-light);}
+.filter-select{padding:0.65rem 1rem;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--ink-soft);outline:none;background:white;}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,26,46,0.5);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.show{display:flex;}
+.modal{background:white;border-radius:16px;padding:2rem;width:100%;max-width:480px;margin:1rem;box-shadow:0 20px 60px rgba(26,26,46,0.2);}
+.modal h3{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:500;margin-bottom:0.3rem;}
+.modal p{font-size:0.82rem;color:var(--ink-muted);margin-bottom:1.25rem;}
+.modal-field{margin-bottom:1rem;}
+.modal-field label{display:block;font-size:0.72rem;font-weight:500;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;}
+.modal-field input,.modal-field select{width:100%;padding:0.7rem;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--ink);outline:none;}
+.modal-actions{display:flex;gap:0.75rem;margin-top:1.5rem;}
+.btn-cancel{flex:1;padding:0.7rem;background:var(--paper-warm);border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.82rem;cursor:pointer;color:var(--ink-soft);}
+.btn-confirm{flex:1;padding:0.7rem;background:linear-gradient(135deg,var(--accent),var(--accent-light));border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:500;cursor:pointer;color:white;}
+
+/* Loading */
+.loading{text-align:center;padding:3rem;color:var(--ink-muted);font-size:0.85rem;}
+
+@media(max-width:1024px){.stats-grid{grid-template-columns:repeat(2,1fr);}.revenue-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h2>PsychEval Admin</h2>
+    <p>Acceso restringido · Panel de administración</p>
+    <div class="login-field">
+      <label>Contraseña de administrador</label>
+      <input type="password" id="adminPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    </div>
+    <button class="login-btn" onclick="doAdminLogin()">Entrar</button>
+    <div class="login-error" id="loginError">Contraseña incorrecta</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="adminDashboard" style="display:none;width:100%;display:none;">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span class="logo-mark">PsychEval</span>
+      <span class="logo-sub">Panel de Control</span>
+      <span class="admin-badge">ADMIN</span>
+    </div>
+    <div class="nav-section">
+      <button class="nav-item active" onclick="showPage('resumen')"><span class="nav-icon">📊</span>Resumen</button>
+      <button class="nav-item" onclick="showPage('centros')"><span class="nav-icon">🏥</span>Centros</button>
+      <button class="nav-item" onclick="showPage('ingresos')"><span class="nav-icon">💰</span>Ingresos</button>
+      <button class="nav-item" onclick="showPage('uso')"><span class="nav-icon">📈</span>Uso IA</button>
+    </div>
+    <div class="sidebar-footer">
+      <button class="logout-btn" onclick="doLogout()">⏻ Cerrar sesión</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">Resumen General</div>
+      <div class="topbar-right">
+        <span class="topbar-date" id="topbarDate"></span>
+        <button onclick="loadAll()" style="padding:0.45rem 0.9rem;border:1px solid var(--border);border-radius:7px;background:white;font-size:0.75rem;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--ink-soft);">↻ Actualizar</button>
+      </div>
+    </div>
+
+    <!-- PÁGINA: RESUMEN -->
+    <div class="page active" id="page-resumen">
+      <div style="padding:2rem;">
+
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card"><div class="stat-label">🏥 Centros activos</div><div class="stat-value" id="statCentros">—</div><div class="stat-sub">Total registrados</div></div>
+          <div class="stat-card"><div class="stat-label">📄 Informes este mes</div><div class="stat-value" id="statInformes">—</div><div class="stat-sub">Generados con IA</div></div>
+          <div class="stat-card"><div class="stat-label">💰 MRR estimado</div><div class="stat-value" id="statMRR">—</div><div class="stat-sub">Ingresos recurrentes/mes</div></div>
+          <div class="stat-card"><div class="stat-label">🧠 Coste IA est.</div><div class="stat-value" id="statCosto">—</div><div class="stat-sub">~0,05€ por informe</div></div>
+        </div>
+
+        <div class="revenue-grid">
+          <div class="revenue-card">
+            <h3>Ingresos mensuales estimados</h3>
+            <div class="amount" id="revenueTotal">—</div>
+            <div class="sub" id="revenueSub">Basado en planes activos</div>
+          </div>
+          <div class="revenue-card" style="background:linear-gradient(135deg,var(--teal),#1a4b4e);">
+            <h3>Margen estimado</h3>
+            <div class="amount" id="revenueMargin">—</div>
+            <div class="sub">Después de coste IA</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Centros recientes</span>
+            <button class="card-action" onclick="showPage('centros')">Ver todos →</button>
+          </div>
+          <table>
+            <thead><tr><th>Centro</th><th>Plan</th><th>Informes</th><th>Registro</th><th>Estado</th></tr></thead>
+            <tbody id="recentCentros"><tr><td colspan="5" class="loading">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PÁGINA: CENTROS -->
+    <div class="page" id="page-centros">
+      <div style="padding:2rem;">
+        <div class="search-bar">
+          <input class="search-input" id="searchCentro" placeholder="Buscar por nombre o email..." oninput="filterCentros()">
+          <select class="filter-select" id="filterPlan" onchange="filterCentros()">
+            <option value="">Todos los planes</option>
+            <option value="basico">Básico</option>
+            <option value="profesional">Profesional</option>
+            <option value="clinica">Clínica</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Todos los centros</span>
+            <span id="centrosCount" style="font-size:0.75rem;color:var(--ink-muted);"></span>
+          </div>
+          <table>
+            <thead><tr><th>Centro</th><th>Email</th><th>Plan</th><th>Informes</th><th>Registro</th><th>Estado</th><th></th></tr></thead>
+            <tbody id="allCentros"><tr><td colspan="7" class="loading">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PÁGINA: INGRESOS -->
+    <div class="page" id="page-ingresos">
+      <div style="padding:2rem;">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Plan Básico (79€)</div><div class="stat-value" id="countBasico">—</div><div class="stat-sub" id="revenueBasico">— €/mes</div></div>
+          <div class="stat-card"><div class="stat-label">Plan Profesional (199€)</div><div class="stat-value" id="countProfesional">—</div><div class="stat-sub" id="revenueProfesional">— €/mes</div></div>
+          <div class="stat-card"><div class="stat-label">Plan Clínica (399€)</div><div class="stat-value" id="countClinica">—</div><div class="stat-sub" id="revenueClinica">— €/mes</div></div>
+          <div class="stat-card" style="border-color:var(--accent-light);"><div class="stat-label">💰 Total MRR</div><div class="stat-value" id="totalMRR2">—</div><div class="stat-sub">Ingresos recurrentes</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Distribución por plan</span></div>
+          <div style="padding:1.5rem;" id="planDistrib">Cargando...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PÁGINA: USO IA -->
+    <div class="page" id="page-uso">
+      <div style="padding:2rem;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Uso de informes por centro</span></div>
+          <table>
+            <thead><tr><th>Centro</th><th>Plan</th><th>Informes usados</th><th>Límite</th><th>% uso</th></tr></thead>
+            <tbody id="usoTable"><tr><td colspan="5" class="loading">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal cambiar plan -->
+<div class="modal-overlay" id="changePlanModal">
+  <div class="modal">
+    <h3>Cambiar plan</h3>
+    <p id="changePlanDesc">Centro seleccionado</p>
+    <div class="modal-field">
+      <label>Nuevo plan</label>
+      <select id="newPlanSelect">
+        <option value="basico">Básico — 79 €/mes</option>
+        <option value="profesional">Profesional — 199 €/mes</option>
+        <option value="clinica">Clínica — 399 €/mes</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmChangePlan()">Guardar cambio</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPA_URL = 'https://qvuumuqixnwggfubwqsg.supabase.co';
+  const SUPA_KEY = 'sb_publishable_M0sI7GiZKgd2xm-TRr3L6Q_8FxL8MEH';
+  const ADMIN_PASS = 'PsychEval2025!'; // Cambia esto
+  const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+  const PRICES = { basico: 79, profesional: 199, clinica: 399 };
+  const LIMITS = { basico: 5, profesional: 20, clinica: 9999 };
+
+  let allCentrosData = [];
+  let selectedCentroId = null;
+
+  // ─── AUTH ────────────────────────────────────────────────────────────────────
+  function doAdminLogin() {
+    const pass = document.getElementById('adminPass').value;
+    if (pass === ADMIN_PASS) {
+      sessionStorage.setItem('psycheval_admin', '1');
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('adminDashboard').style.display = 'flex';
+      loadAll();
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  }
+
+  function doLogout() {
+    sessionStorage.removeItem('psycheval_admin');
+    location.reload();
+  }
+
+  // Check if already logged in
+  if (sessionStorage.getItem('psycheval_admin') === '1') {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('adminDashboard').style.display = 'flex';
+  }
+
+  // ─── NAVIGATION ───────────────────────────────────────────────────────────────
+  const pageTitles = { resumen:'Resumen General', centros:'Gestión de Centros', ingresos:'Ingresos y Facturación', uso:'Uso de IA' };
+
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    event.currentTarget.classList.add('active');
+    document.getElementById('pageTitle').textContent = pageTitles[page];
+  }
+
+  // ─── DATA LOADING ─────────────────────────────────────────────────────────────
+  async function loadAll() {
+    document.getElementById('topbarDate').textContent = new Date().toLocaleString('es-ES');
+    await loadCentros();
+    updateIngresos();
+    updateUso();
+  }
+
+  async function loadCentros() {
+    const { data, error } = await sb.from('centros').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    allCentrosData = data || [];
+
+    // Stats
+    const total = allCentrosData.length;
+    const totalInformes = allCentrosData.reduce((s, c) => s + (c.informes_usados || 0), 0);
+    const mrr = allCentrosData.reduce((s, c) => s + (PRICES[c.plan] || 0), 0);
+    const costoIA = (totalInformes * 0.05).toFixed(2);
+
+    document.getElementById('statCentros').textContent = total;
+    document.getElementById('statInformes').textContent = totalInformes;
+    document.getElementById('statMRR').textContent = mrr + '€';
+    document.getElementById('statCosto').textContent = costoIA + '€';
+    document.getElementById('revenueTotal').textContent = mrr + ' €';
+    document.getElementById('revenueMargin').textContent = (mrr - parseFloat(costoIA)).toFixed(0) + ' €';
+
+    // Recent centros table
+    const recent = allCentrosData.slice(0, 5);
+    document.getElementById('recentCentros').innerHTML = recent.map(c => centroRow(c, false)).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-muted);padding:1.5rem;">Sin centros registrados</td></tr>';
+
+    // All centros table
+    renderAllCentros(allCentrosData);
+  }
+
+  function centroRow(c, full=true) {
+    const fecha = new Date(c.created_at).toLocaleDateString('es-ES');
+    const planBadge = `<span class="badge ${c.plan}">${c.plan}</span>`;
+    if (!full) {
+      return `<tr>
+        <td><strong>${c.nombre}</strong></td>
+        <td>${planBadge}</td>
+        <td>${c.informes_usados || 0}</td>
+        <td>${fecha}</td>
+        <td><span class="badge ${c.activo !== false ? 'active' : 'inactive'}">${c.activo !== false ? '● Activo' : '○ Inactivo'}</span></td>
+      </tr>`;
+    }
+    return `<tr>
+      <td><strong>${c.nombre}</strong></td>
+      <td style="font-size:0.75rem;">${c.email}</td>
+      <td>${planBadge}</td>
+      <td>${c.informes_usados || 0} / ${LIMITS[c.plan] === 9999 ? '∞' : LIMITS[c.plan]}</td>
+      <td>${fecha}</td>
+      <td><span class="badge ${c.activo !== false ? 'active' : 'inactive'}">${c.activo !== false ? '● Activo' : '○ Inactivo'}</span></td>
+      <td style="display:flex;gap:0.4rem;">
+        <button class="tbl-btn" onclick="openChangePlan('${c.id}','${c.nombre}','${c.plan}')">Plan</button>
+        <button class="tbl-btn" onclick="resetInformes('${c.id}')">Reset</button>
+        <button class="tbl-btn danger" onclick="toggleActivo('${c.id}',${c.activo !== false})">${c.activo !== false ? 'Pausar' : 'Activar'}</button>
+      </td>
+    </tr>`;
+  }
+
+  function renderAllCentros(data) {
+    document.getElementById('centrosCount').textContent = data.length + ' centros';
+    document.getElementById('allCentros').innerHTML = data.map(c => centroRow(c, true)).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--ink-muted);padding:1.5rem;">Sin resultados</td></tr>';
+  }
+
+  function filterCentros() {
+    const q = document.getElementById('searchCentro').value.toLowerCase();
+    const plan = document.getElementById('filterPlan').value;
+    const filtered = allCentrosData.filter(c => {
+      const matchQ = !q || c.nombre?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q);
+      const matchPlan = !plan || c.plan === plan;
+      return matchQ && matchPlan;
+    });
+    renderAllCentros(filtered);
+  }
+
+  function updateIngresos() {
+    const counts = { basico: 0, profesional: 0, clinica: 0 };
+    allCentrosData.forEach(c => { if (counts[c.plan] !== undefined) counts[c.plan]++; });
+    document.getElementById('countBasico').textContent = counts.basico;
+    document.getElementById('countProfesional').textContent = counts.profesional;
+    document.getElementById('countClinica').textContent = counts.clinica;
+    document.getElementById('revenueBasico').textContent = (counts.basico * 79) + ' €/mes';
+    document.getElementById('revenueProfesional').textContent = (counts.profesional * 199) + ' €/mes';
+    document.getElementById('revenueClinica').textContent = (counts.clinica * 399) + ' €/mes';
+    const total = counts.basico * 79 + counts.profesional * 199 + counts.clinica * 399;
+    document.getElementById('totalMRR2').textContent = total + ' €';
+
+    // Distribution bars
+    const totalC = allCentrosData.length || 1;
+    document.getElementById('planDistrib').innerHTML = ['basico','profesional','clinica'].map(p => `
+      <div style="margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.4rem;">
+          <span style="text-transform:capitalize;font-weight:500;">${p}</span>
+          <span style="color:var(--ink-muted);">${counts[p]} centros · ${counts[p]*PRICES[p]}€/mes</span>
+        </div>
+        <div style="height:8px;background:var(--paper-warm);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${Math.round(counts[p]/totalC*100)}%;background:linear-gradient(90deg,var(--accent),var(--accent-light));border-radius:4px;"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updateUso() {
+    document.getElementById('usoTable').innerHTML = allCentrosData.map(c => {
+      const limit = LIMITS[c.plan] === 9999 ? '∞' : LIMITS[c.plan];
+      const used = c.informes_usados || 0;
+      const pct = LIMITS[c.plan] === 9999 ? 0 : Math.round(used / LIMITS[c.plan] * 100);
+      const color = pct > 80 ? 'var(--error)' : pct > 50 ? 'var(--gold)' : 'var(--success)';
+      return `<tr>
+        <td><strong>${c.nombre}</strong></td>
+        <td><span class="badge ${c.plan}">${c.plan}</span></td>
+        <td>${used}</td>
+        <td>${limit}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <div style="flex:1;height:6px;background:var(--paper-warm);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
+            </div>
+            <span style="font-size:0.72rem;color:var(--ink-muted);width:35px;">${LIMITS[c.plan] === 9999 ? '∞' : pct + '%'}</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-muted);padding:1.5rem;">Sin datos</td></tr>';
+  }
+
+  // ─── ACTIONS ──────────────────────────────────────────────────────────────────
+  function openChangePlan(id, nombre, plan) {
+    selectedCentroId = id;
+    document.getElementById('changePlanDesc').textContent = nombre;
+    document.getElementById('newPlanSelect').value = plan;
+    document.getElementById('changePlanModal').classList.add('show');
+  }
+
+  async function confirmChangePlan() {
+    const newPlan = document.getElementById('newPlanSelect').value;
+    await sb.from('centros').update({ plan: newPlan }).eq('id', selectedCentroId);
+    closeModal();
+    loadAll();
+  }
+
+  async function resetInformes(id) {
+    if (!confirm('¿Resetear el contador de informes a 0?')) return;
+    await sb.from('centros').update({ informes_usados: 0 }).eq('id', id);
+    loadAll();
+  }
+
+  async function toggleActivo(id, currentlyActive) {
+    const action = currentlyActive ? 'pausar' : 'activar';
+    if (!confirm(`¿${action} este centro?`)) return;
+    await sb.from('centros').update({ activo: !currentlyActive }).eq('id', id);
+    loadAll();
+  }
+
+  function closeModal() {
+    document.getElementById('changePlanModal').classList.remove('show');
+    selectedCentroId = null;
+  }
+
+  // Init
+  document.getElementById('topbarDate').textContent = new Date().toLocaleString('es-ES');
+  if (sessionStorage.getItem('psycheval_admin') === '1') loadAll();
+</script>
+</body>
+</html>
